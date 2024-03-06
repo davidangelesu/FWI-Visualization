@@ -28,7 +28,7 @@ phases=np.linspace(0,2*np.pi,15)
 
 for timestep in range(0,15):
 
-    path=path2DData+'/reference'
+    path=path2DData+'/Reference'
 
     if timestep==0:
         create_dir(path)

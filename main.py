@@ -5,8 +5,12 @@ from trame.app import get_server
 from trame.ui.vuetify import SinglePageWithDrawerLayout,VAppLayout
 from trame.widgets import vuetify
 import numpy as np
+import os
+# ----find Parameters----
+path2DData='./data/2D'
+config_dic=dict(enumerate(sorted(os.listdir(path2DData), key= lambda x:-1 if x=='Reference' else 1)))
 
-
+timesteps= len(os.listdir(path2DData + '/' + config_dic[0]))
 
 
 pv.OFF_SCREEN = True
@@ -15,66 +19,52 @@ server = get_server()
 server.client_type='vue2'
 state, ctrl = server.state, server.controller
 
+state['first_graph_index']=0
+state['second_graph_index']=0
+state['timestep']=0
 
 server.hot_reload = True
 
-
-def getFilePath(timestep,i):
-    return 'data/mesh_i_{}_t_{}.vti'.format(i,timestep)
-# Create and structured surface
-grid = pv.read(getFilePath(0,0))
-terrain=grid.warp_by_scalar()
-
-state['plotter']=pv.Plotter()
-p=state['plotter']
-print(p.shape)
-
-p.add_mesh(
-    terrain,
-    name='terrain',
-    scalars="Height",
-    lighting=False,
-    show_edges=True,
-)
+def getFilePath(i,timestep):
+    return path2DData+'/{}/mesh_t_{}.vti'.format(config_dic[i],timestep)
 
 
-timesteps = 15
-
-data_config={}
-data_config[0] = {
-    "title": "Reference",
-}
-data_config[1] = {
-    "title": "Noise .01",
-}
-data_config[2] = {
-    "title": "Noise .05",
-}
-data_config[3] = {
-    "title": "Noise .1",
-}
+p=pv.Plotter(shape=(1,2))
 
 
-@state.change("timestep")
-def slider_value_change(timestep, **kwargs):
-  grid = pv.read(getFilePath(timestep, 0))
+def plot_graph(timestep, graph_index,subplot_index, **kwargs):
+  #idk why it is recieved as a string....
+  p.subplot(0,subplot_index)
+  p.add_text(config_dic[graph_index], font_size=16,name='title')
+
+  grid = pv.read(getFilePath( graph_index,timestep))
   terrain = grid.warp_by_scalar()
-  state['plotter'].add_mesh(
+  p.add_mesh(
       terrain,
       name='terrain')
-  print(f"Slider is changing slider_value to {timestep}")
-
-@state.change("show_second_graph")
-def toggle_show_second_graph(show_second_graph, **kwargs):
-  print("state change",show_second_graph)
-  state['disable_second_grid_radio_buttons']= not show_second_graph
-  if(show_second_graph):
-      return
 
 
+
+
+#initial plot
+plot_graph(0,0,0)
+plot_graph(0,0,1)
+p.link_views()
+
+
+@state.change("timestep","first_graph_index")
+def onFirstGraphChange(timestep, first_graph_index,**kwargs):
+  plot_graph(int(timestep),int(first_graph_index),0)
+  view.update()
+
+@state.change("timestep","second_graph_index")
+def onFirstGraphChange(timestep, second_graph_index,**kwargs):
+  plot_graph(int(timestep),int(second_graph_index),1)
+  view.update()
 
 
 with SinglePageWithDrawerLayout(server) as layout:
+    layout.title.set_text("Visual Comparison")
     with layout.content:
         with vuetify.VContainer(
             fluid=True,
@@ -82,7 +72,6 @@ with SinglePageWithDrawerLayout(server) as layout:
         ):
             # Use PyVista UI template for Plotters
             view = plotter_ui(p)
-            print(view)
             ctrl.view_update = view.update
     with layout.drawer:
         with vuetify.VContainer(
@@ -98,16 +87,12 @@ with SinglePageWithDrawerLayout(server) as layout:
                     dense=True,
                     min=0,
                     max=timesteps - 1,
-                    v_model=("timestep", 0),
+                    v_model=("timestep",),
                 )
-                vuetify.VCheckbox(label='Show Second Graph',v_model=('show_second_graph',False))
                 with vuetify.VRadioGroup(
-                        v_model=("second_graph_grid", next(iter(data_config))),
-                        disabled=("disable_second_grid_radio_buttons",False)
-
-
+                        v_model=("second_graph_index",),
                 ):
-                    for key, value in data_config.items():
-                        vuetify.VRadio(label=value["title"], value=key)
+                    for key, value in config_dic.items():
+                        vuetify.VRadio(label=value, value=key)
 
 server.start()
