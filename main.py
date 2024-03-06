@@ -101,7 +101,12 @@ def on_second_graph_change(timestep, second_graph_index, **kwargs):
     plot_graph(int(timestep), int(second_graph_index), 1)
 
 
-
+def radio_group(variable:str):
+    with vuetify.VRadioGroup(
+            v_model=(variable,),
+    ):
+        for key, value in config_dic.items():
+            vuetify.VRadio(label=value, value=key)
 
 
 
@@ -136,10 +141,12 @@ with SinglePageWithDrawerLayout(server) as layout:
                     max=timesteps - 1,
                     v_model=("timestep",),
                 )
-                with vuetify.VRadioGroup(
-                        v_model=("second_graph_index",),
+                with vuetify.VContainer(
+                    fluid=True,
+                    classes="d-flex flex-row p-2",
                 ):
-                    for key, value in config_dic.items():
-                        vuetify.VRadio(label=value, value=key)
+                    radio_group('first_graph_index')
+                    vuetify.VDivider()
+                    radio_group('second_graph_index')
 
 server.start()
