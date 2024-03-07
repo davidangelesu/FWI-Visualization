@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<VTKFile type="ImageData" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
+  <ImageData WholeExtent="0 40 0 40 0 0" Origin="-10 -10 0" Spacing="0.5 0.5 0.5" Direction="1 0 0 0 1 0 0 0 1">
+  <Piece Extent="0 40 0 40 0 0">
+    <PointData Scalars="Height">
+      <DataArray type="Float64" Name="Height" format="binary" RangeMin="1" RangeMax="1">
+        AQAAAACAAACINAAAMgAAAA==eJztxUERAAAIA6A1s38bI+wMYAP4kJyd2LZt27Zt27Zt27Zt27Zt27Zt2/ZzAaWKxgk=
+      </DataArray>
+    </PointData>
+    <CellData>
+    </CellData>
+  </Piece>
+  </ImageData>
+</VTKFile>

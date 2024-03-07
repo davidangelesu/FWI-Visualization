@@ -32,20 +32,25 @@ for timestep in range(0,15):
 
     if timestep==0:
         create_dir(path)
+        grid['Height']=np.ones(r.shape)
+        grid.save(path + '/mesh_material.vti')
 
     phase=phases[timestep]
     z=np.sin(r+phase)
     grid['Height']=z
-    print(grid)
     grid.save(path+'/mesh_t_{}.vti'.format(timestep))
 
     for i,scale in enumerate([0.01,0.05,0.1]):
         path = path2DData +'/Noise {}'.format(scale)
 
+        noise = np.random.normal(0, scale, size=grid.x.size)
+
         if timestep == 0:
             create_dir(path)
+            grid['Height'] = np.ones(r.shape)-np.clip(np.abs(noise),a_min=0,a_max=1)
+            grid.save(path + '/mesh_material.vti')
 
-        noise = np.random.normal(0, scale, size=grid.x.size)
+
         grid['Height'] = z+noise
         grid.save(path+'/mesh_t_{}.vti'.format(timestep))
 

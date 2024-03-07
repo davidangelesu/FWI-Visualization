@@ -11,8 +11,9 @@ import os
 path2DData = './data/2D'
 config_dic = dict(enumerate(sorted(os.listdir(path2DData), key=lambda x: -1 if x == 'Reference' else 1)))
 
-timesteps = len(os.listdir(path2DData + '/' + config_dic[0]))
 
+timesteps = len([filename for filename in os.listdir(path2DData + '/' + config_dic[0]) if 'material' not in filename])
+print(timesteps)
 pv.OFF_SCREEN = True
 
 server = get_server()
