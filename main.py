@@ -9,10 +9,9 @@ import os
 
 # ----find Parameters----
 path2DData = './data/2D'
-config_dic = dict(enumerate(sorted(os.listdir(path2DData), key=lambda x: -1 if x == 'Reference' else 1)))
+folders = sorted(os.listdir(path2DData), key=lambda x: -1 if x == 'Reference' else 1)
 
-
-timesteps = len([filename for filename in os.listdir(path2DData + '/' + config_dic[0]) if 'material' not in filename])
+timesteps = len([filename for filename in os.listdir(path2DData + '/' + folders[0]) if 'material' not in filename])
 print(timesteps)
 pv.OFF_SCREEN = True
 
@@ -20,26 +19,27 @@ server = get_server()
 server.client_type = 'vue2'
 state, ctrl = server.state, server.controller
 
-state['first_graph_index'] = 0
-state['second_graph_index'] = 0
+state['first_folder'] = folders[0]
+state['second_folder'] = folders[0]
 state['timestep'] = 0
+state['plotMode']='displacement'
 
 server.hot_reload = True
 
 
-def getFilePath(i, timestep):
-    return path2DData + '/{}/mesh_t_{}.vti'.format(config_dic[i], timestep)
+def get_file_path(folder, timestep):
+    return path2DData + '/{}/mesh_t_{}.vti'.format(folder, timestep)
 
 
 p = pv.Plotter(shape=(1, 2))
 
 
-def plot_graph(timestep, graph_index, subplot_index, **kwargs):
+def plot_graph(timestep, folder, subplot_index, **kwargs):
     # idk why it is recieved as a string....
     p.subplot(0, subplot_index)
-    p.add_text(config_dic[graph_index], font_size=16, name='title')
+    p.add_text(folder, font_size=16, name='title')
 
-    grid = pv.read(getFilePath(graph_index, timestep))
+    grid = pv.read(get_file_path(folder, timestep))
     terrain = grid.warp_by_scalar()
     p.add_mesh(
         terrain,
@@ -63,15 +63,15 @@ def remove_contour(subplot_index):
 
 
 # initial plot
-plot_graph(0, 0, 0)
-plot_graph(0, 0, 1)
+plot_graph(0, folders[0], 0)
+plot_graph(0,folders[0], 1)
 p.link_views()
 
-@state.change("enable_contour","timestep","first_graph_index","second_graph_index")
+@state.change("enable_contour","timestep","first_folder","second_folder")
 def on_state_change(**kwargs):
     view.update()
 
-@state.change("enable_contour","timestep" ,"first_graph_index")
+@state.change("enable_contour","timestep" ,"first_folder")
 def on_first_graph_contour_change(enable_contour, **kwargs):
     if enable_contour:
         show_contour(0)
@@ -82,32 +82,37 @@ def on_first_graph_contour_change(enable_contour, **kwargs):
 
 
 
-@state.change("enable_contour","timestep","second_graph_index")
+@state.change("enable_contour","timestep","second_folder")
 def on_second_graph_contour_change(enable_contour, **kwargs):
     if enable_contour:
         show_contour(1)
         return
     remove_contour(1)
 
-@state.change("timestep", "first_graph_index")
-def on_first_graph_change(timestep, first_graph_index, **kwargs):
+@state.change("timestep", "first_folder")
+def on_first_graph_change(timestep, first_folder, **kwargs):
 
-    plot_graph(int(timestep), int(first_graph_index), 0)
+    plot_graph(int(timestep), first_folder, 0)
     p.subplot(0, 0)
     p.add_text('timestep:{}'.format(timestep), position='lower_left', font_size=6, name="timestep")
 
 
-@state.change("timestep", "second_graph_index")
-def on_second_graph_change(timestep, second_graph_index, **kwargs):
-    plot_graph(int(timestep), int(second_graph_index), 1)
+@state.change("timestep", "second_folder")
+def on_second_graph_change(timestep, second_folder, **kwargs):
+    plot_graph(int(timestep), second_folder, 1)
 
 
-def radio_group(variable:str):
-    with vuetify.VRadioGroup(
-            v_model=(variable,),
-    ):
-        for key, value in config_dic.items():
-            vuetify.VRadio(label=value, value=key)
+@state.change("plotMode")
+def on_plot_mode_change(plotMode,**kwargs):
+    print(plotMode)
+
+def create_select(label:str,variable:str):
+    vuetify.VSelect(label=label,v_model=(variable,), items=("options",folders))
+    # with vuetify.VRadioGroup(
+    #         v_model=(variable,),
+    # ):
+    #     for key, value in config_dic.items():
+    #         vuetify.VRadio(label=value, value=key)
 
 
 
@@ -130,24 +135,36 @@ with SinglePageWithDrawerLayout(server) as layout:
                     fluid=True,
                     classes="d-flex flex-column p-2",
             ):
+                with vuetify.VBtnToggle(v_model=("plotMode","displacement")):
+                    with vuetify.VBtn(value="displacement"):
+                        vuetify.VIcon("mdi-cube-send")
+                    with vuetify.VBtn( value="material"):
+                        vuetify.VIcon("mdi-cube-outline")
                 vuetify.VCheckbox(
                     label="Show Contour Plots",
                     dense=True,
                     v_model=("enable_contour", False)
                 )
-                vuetify.VSlider(
-                    label="Timestep",
-                    dense=True,
-                    min=0,
-                    max=timesteps - 1,
-                    v_model=("timestep",),
-                )
+                with vuetify.VContainer(fluid=True,):
+                    vuetify.VSlider(
+                        label="Timestep",
+                        dense=True,
+                        min=0,
+                        max=timesteps - 1,
+                        v_model=("timestep",),
+                    )
+                    with vuetify.VContainer(fluid=True):
+                        with vuetify.VRow():
+                            with vuetify.VBtn():
+                                vuetify.VIcon("mdi-plus")
+                            with vuetify.VBtn():
+                                vuetify.VIcon("mdi-minus")
                 with vuetify.VContainer(
                     fluid=True,
                     classes="d-flex flex-row p-2",
                 ):
-                    radio_group('first_graph_index')
+                    create_select("Reference",'first_folder')
                     vuetify.VDivider()
-                    radio_group('second_graph_index')
+                    create_select("Comparison",'second_folder')
 
 server.start()
