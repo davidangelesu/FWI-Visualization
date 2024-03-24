@@ -2,7 +2,7 @@ import pyvista as pv
 from pyvista.trame.ui import plotter_ui
 from trame.app import get_server
 from trame.ui.vuetify import SinglePageWithDrawerLayout
-from trame.widgets import vuetify
+from trame.widgets import vuetify,html
 import os
 
 # ----find Parameters----
@@ -11,7 +11,6 @@ folders = sorted(os.listdir(path2DData), key=lambda x: -1 if x == 'Reference' el
 
 
 timesteps = len([filename for filename in os.listdir(path2DData + '/' + folders[0]) if 'material' not in filename])
-print(timesteps)
 pv.OFF_SCREEN = True
 
 server = get_server()
@@ -41,7 +40,6 @@ def plot_graph(timestep, folder, subplot_index, **kwargs):
     p.add_text(folder, font_size=16, name='title')
 
     filePath=get_displacement_file_path(folder, timestep) if int(state['plotMode']) == 0 else get_material_file_path(folder)
-    print(filePath)
     grid = pv.read(filePath)
     terrain = grid.warp_by_scalar()
     p.add_mesh(
@@ -109,66 +107,83 @@ def on_second_graph_change(timestep, second_folder,plotMode, **kwargs):
     plot_graph(int(timestep), second_folder, 1)
 
 
-@state.change("plotMode")
-def on_plot_mode_change(plotMode,**kwargs):
-    print(plotMode)
 
+def add_timestep():
+    state['timestep']=min(state['timestep']+1,timesteps - 1)
+
+
+def minus_timestep():
+    state['timestep']=max(state['timestep']+1,0)
 
 
 def create_select(label:str,variable:str):
     vuetify.VSelect(label=label,v_model=(variable,), items=("options",folders))
+
 
 with SinglePageWithDrawerLayout(server) as layout:
     layout.title.set_text("Full Waveform Inversion Results Visualizer")
     with layout.content:
         with vuetify.VContainer(
                 fluid=True,
-                classes="pa-0 fill-height",
+                classes="pa-2 fill-height d-flex align-center",
         ):
-            # Use PyVista UI template for Plotters
-            view = plotter_ui(p)
-            ctrl.view_update = view.update
+            with vuetify.VCol(cols="3"):
+                with vuetify.VCard():
+                    vuetify.VCardTitle("Parameters")
+                    vuetify.VDivider()
+                    with vuetify.VCardText():
+                        with vuetify.VContainer(
+                                fluid=True,
+                                classes="d-flex flex-column p-2",
+                        ):
+                            html.H3("Mode:")
+                            with vuetify.VBtnToggle(v_model=("plotMode", 0), mandatory=True,
+                                                    classes="d-flex w-100", ):
+                                with vuetify.VBtn( value=0,size="small" ):
+                                    vuetify.VIcon("mdi-cube-send")
+                                with vuetify.VBtn( value=1, size="small"):
+                                    vuetify.VIcon("mdi-cube-outline")
+                            html.H3("Visualization Tools:")
+                            vuetify.VCheckbox(
+                                label="Show Contour Plots",
+                                dense=True,
+                                v_model=("enable_contour", False)
+                            )
+                            html.H3("Comparison:")
+                            with vuetify.VRow( ):
+                                with vuetify.VCol(cols="10", classes="fill-height"):
+                                    vuetify.VSlider(
+                                        label="Timestep",
+                                        min=0,
+                                        max=timesteps - 1,
+                                        v_model=("timestep",),
+                                        disabled=("plotMode==1",)
+                                    )
+                                with vuetify.VCol(cols="2", classes="fill-height"):
+                                    with vuetify.VContainer():
+                                        with vuetify.VRow():
+                                            vuetify.VBtn("+",x_small=True,click=add_timestep)
+
+                                        with vuetify.VRow():
+                                            vuetify.VBtn("-",x_small=True,click=minus_timestep)
+                            with vuetify.VContainer(
+                                    fluid=True,
+                                    classes="d-flex flex-row p-2",
+                            ):
+                                create_select("Side A", 'first_folder')
+                                vuetify.VDivider()
+                                create_select("Side B", 'second_folder')
+
+            with vuetify.VCol(cols="9", classes="fill-height"):
+                with vuetify.VContainer(fluid=True, classes="fill-height"):
+                    # Use PyVista UI template for Plotters
+                    view = plotter_ui(p)
+                    ctrl.view_update = view.update
     with layout.drawer:
-        with vuetify.VContainer(
+        vuetify.VContainer(
                 fluid=True,
                 classes="d-flex flex-column p-2",
-        ):
-            with vuetify.VContainer(
-                    fluid=True,
-                    classes="d-flex flex-column p-2",
-            ):
-                with vuetify.VBtnToggle(v_model=("plotMode",0),mandatory=True,classes="d-flex justify-space-between"):
-                    with vuetify.VBtn("displacement",value=0,):
-                        "Displacement"
-                        vuetify.VIcon("mdi-cube-send")
-                    with vuetify.VBtn( "material",value=1,):
-                        "Material"
-                        vuetify.VIcon("mdi-cube-outline")
-                vuetify.VCheckbox(
-                    label="Show Contour Plots",
-                    dense=True,
-                    v_model=("enable_contour", False)
-                )
-                with vuetify.VContainer(fluid=True,):
-                    vuetify.VSlider(
-                        label="Timestep",
-                        min=0,
-                        max=timesteps - 1,
-                        v_model=("timestep",),
-                        disabled=("plotMode==1",)
-                    )
-                    with vuetify.VContainer(fluid=True):
-                        with vuetify.VRow():
-                            with vuetify.VBtn():
-                                vuetify.VIcon("mdi-plus")
-                            with vuetify.VBtn():
-                                vuetify.VIcon("mdi-minus")
-                with vuetify.VContainer(
-                    fluid=True,
-                    classes="d-flex flex-row p-2",
-                ):
-                    create_select("Side A",'first_folder')
-                    vuetify.VDivider()
-                    create_select("Side B",'second_folder')
+        )
+
 
 server.start()
