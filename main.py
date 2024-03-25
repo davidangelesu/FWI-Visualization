@@ -6,53 +6,29 @@ from trame.widgets import router, vuetify3 as vuetify
 server = get_server()
 server.client_type = "vue3"
 state, ctrl = server.state, server.controller
-
-# Home route
 with RouterViewLayout(server, "/"):
     with vuetify.VCard():
         vuetify.VCardTitle("This is home")
 
-# Foo route
 with RouterViewLayout(server, "/foo"):
     with vuetify.VCard():
         vuetify.VCardTitle("This is foo")
-        with vuetify.VCardText():
-            vuetify.VBtn("Take me back", click="$router.back()")
 
-# Bar/id
 with RouterViewLayout(server, "/bar/:id"):
-    with vuetify.VCard():
-        vuetify.VCardTitle("This is bar with ID '{{ $route.params.id }}'")
+    with vuetify.VList():
+        vuetify.VListItem("Bar {{ $route.params.id }} item 1")
+        vuetify.VListItem("Bar {{ $route.params.id }} item 2")
+        vuetify.VListItem("Bar {{ $route.params.id }} item 3")
 
-# Main page content
 with SinglePageWithDrawerLayout(server) as layout:
-    layout.title.set_text("Multi-Page demo")
+    with layout.toolbar:
+        vuetify.VBtn("Home", to="/")
+        vuetify.VBtn("Foo", to="/foo")
+        vuetify.VBtn("Bar 1", to="/bar/1")
+        vuetify.VBtn("Bar 2", to="/bar/2")
+        vuetify.VBtn("Bar 3", to="/bar/3")
 
     with layout.content:
-        with vuetify.VContainer():
-            router.RouterView()
-
-    # add router buttons to the drawer
-    with layout.drawer:
-        with vuetify.VList(
-            shaped=True,
-            v_model=("selectedRoute", 0),
-            v_model_opened=("open", []),
-            __properties=[("v_model_opened", "v-model:opened")],
-        ) as c:
-            vuetify.VListSubheader("Routes")
-
-            vuetify.VListItem(to="/", prepend_icon="mdi-home", title="Home")
-            vuetify.VListItem(to="/foo", prepend_icon="mdi-food", title="Foo")
-
-            vuetify.VListSubheader("Bars")
-            vuetify.VListItem(
-                v_for="id in 3",
-                key="id",
-                to=("`/bar/${id}`",),
-                prepend_icon="mdi-peanut-outline",
-                title=("`Bar: Id ${id}`",),
-            )
-
+        router.RouterView()
 if __name__ == "__main__":
     server.start()
