@@ -1,249 +1,58 @@
-import pyvista as pv
-from pyvista.trame.ui import plotter_ui
 from trame.app import get_server
 from trame.ui.vuetify3 import SinglePageWithDrawerLayout
 from trame.ui.router import RouterViewLayout
-from trame.widgets import vuetify3 as vuetify, html, router
-import os
-
-
-def get_displacement_file_path(folder, timestep):
-    return path2DData + '/{}/mesh_t_{}.vti'.format(folder, timestep)
-
-
-def get_material_file_path(folder):
-    return path2DData + '/{}/mesh_material.vti'.format(folder)
-
-# ----find Parameters----
-path2DData = './data/2D'
-folders = sorted(os.listdir(path2DData), key=lambda x: -1 if x == 'Reference' else 1)
-
-timesteps = len([filename for filename in os.listdir(path2DData + '/' + folders[0]) if 'material' not in filename])
-pv.OFF_SCREEN = True
-
-[nx,ny,nz]=pv.read(get_material_file_path(folders[0])).dimensions
-print(nx,ny,nz)
-
+from trame.widgets import router, vuetify3 as vuetify
 
 server = get_server()
-server.client_type = 'vue3'
+server.client_type = "vue3"
 state, ctrl = server.state, server.controller
 
-state['first_folder'] = folders[0]
-state['second_folder'] = folders[0]
-state['timestep'] = 0
-state['plotMode'] = 0
-server.hot_reload = True
-state["index_i"] = '0'
-state["index_j"] = '0'
+# Home route
+with RouterViewLayout(server, "/"):
+    with vuetify.VCard():
+        vuetify.VCardTitle("This is home")
 
+# Foo route
+with RouterViewLayout(server, "/foo"):
+    with vuetify.VCard():
+        vuetify.VCardTitle("This is foo")
+        with vuetify.VCardText():
+            vuetify.VBtn("Take me back", click="$router.back()")
 
-side_by_side_plot = pv.Plotter(shape=(1, 2))
+# Bar/id
+with RouterViewLayout(server, "/bar/:id"):
+    with vuetify.VCard():
+        vuetify.VCardTitle("This is bar with ID '{{ $route.params.id }}'")
 
-
-def plot_graph(timestep, folder, subplot_index, **kwargs):
-    side_by_side_plot.subplot(0, subplot_index)
-    side_by_side_plot.add_text(folder, font_size=16, name='title')
-
-    file_path = get_displacement_file_path(folder, timestep) if int(state['plotMode']) == 0 else get_material_file_path(
-        folder)
-    grid = pv.read(file_path)
-    terrain = grid.warp_by_scalar()
-    side_by_side_plot.add_mesh(
-        terrain,
-        name='terrain')
-
-
-def show_contour(subplot_index):
-    side_by_side_plot.subplot(0, subplot_index)
-    for mesh in side_by_side_plot.meshes:
-        if isinstance(mesh, pv.core.pointset.StructuredGrid):
-            contour = mesh.contour()
-            side_by_side_plot.add_mesh(contour, color="white", line_width=5, name="contour")
-            return
-
-
-def remove_contour(subplot_index):
-    side_by_side_plot.subplot(0, subplot_index)
-    if 'contour' in side_by_side_plot.actors:
-        side_by_side_plot.remove_actor(side_by_side_plot.actors['contour'])
-        return
-
-
-# initial plot
-plot_graph(0, folders[0], 0)
-plot_graph(0, folders[0], 1)
-side_by_side_plot.link_views()
-
-
-@state.change("enable_contour", "timestep", "first_folder", "second_folder")
-def on_state_change(**kwargs):
-    ctrl.view_update()
-
-
-@state.change("enable_contour", "timestep", "first_folder")
-def on_first_graph_contour_change(enable_contour, **kwargs):
-    if enable_contour:
-        show_contour(0)
-
-        return
-    remove_contour(0)
-
-
-@state.change("enable_contour", "timestep", "second_folder")
-def on_second_graph_contour_change(enable_contour, **kwargs):
-    if enable_contour:
-        show_contour(1)
-        return
-    remove_contour(1)
-
-
-@state.change("timestep", "first_folder", "plotMode")
-def on_first_graph_change(timestep, first_folder, plotMode, **kwargs):
-    plot_graph(int(timestep), first_folder, 0)
-    side_by_side_plot.subplot(0, 0)
-    if int(plotMode) == 0:
-        side_by_side_plot.add_text('timestep:{}'.format(timestep), position='lower_left', font_size=6, name="timestep")
-    else:
-        side_by_side_plot.add_text("", name="timestep")
-
-
-@state.change("timestep", "second_folder", "plotMode")
-def on_second_graph_change(timestep, second_folder, plotMode, **kwargs):
-    plot_graph(int(timestep), second_folder, 1)
-
-
-def add_timestep():
-    state['timestep'] = min(state['timestep'] + 1, timesteps - 1)
-
-
-def minus_timestep():
-    state['timestep'] = max(state['timestep'] - 1, 0)
-
-
-def create_select(label: str, variable: str, **kwargs):
-    vuetify.VSelect(label=label, v_model=(variable,), items=("options", folders), **kwargs)
-
-
-def create_side_by_side_layout():
-    with vuetify.VContainer(
-            fluid=True,
-            classes="pa-2 fill-height d-flex align-center",
-    ):
-        with vuetify.VCol(cols="3"):
-            with vuetify.VCard():
-                vuetify.VCardTitle("Parameters")
-                vuetify.VDivider()
-                with vuetify.VCardText():
-                    with vuetify.VContainer(
-                            fluid=True,
-                            classes="d-flex flex-column",
-                    ):
-                        html.H3("Mode:")
-                        with vuetify.VBtnToggle(v_model=("plotMode", 0), mandatory=True, divided=True, rounded="xs",
-                                                classes="d-flex w-100", ):
-                            with vuetify.VBtn(value=0, classes="flex-grow-1"):
-                                vuetify.VIcon("mdi-cube-send")
-                                vuetify.VTooltip("displacement field", activator="parent", location="bottom")
-
-                            with vuetify.VBtn(value=1, classes="flex-grow-1"):
-                                vuetify.VIcon("mdi-cube-outline")
-                                vuetify.VTooltip("material field", activator="parent", location="bottom")
-
-                        html.H3("Visualization Tools:")
-                        vuetify.VCheckbox(
-                            label="Show Contour Plots",
-                            dense=True,
-                            v_model=("enable_contour", False)
-                        )
-                        html.H3("Comparison:")
-                        with vuetify.VRow():
-                            with vuetify.VCol(cols="10", classes="fill-height"):
-                                vuetify.VSlider(
-                                    label="Timestep",
-                                    min=0,
-                                    max=timesteps - 1,
-                                    step=1,
-                                    v_model=("timestep",),
-                                    disabled=("plotMode==1",)
-                                )
-                            with vuetify.VCol(cols="2", classes="fill-height"):
-                                with vuetify.VContainer():
-                                    with vuetify.VRow():
-                                        vuetify.VBtn("+", size="x-small", tile=True, rounded="0", click=add_timestep,
-                                                     elevation="0")
-                                    with vuetify.VRow():
-                                        vuetify.VBtn("-", size="x-small", tile=True, rounded="0", click=minus_timestep,
-                                                     elevation="0")
-                        with vuetify.VContainer(
-                                fluid=True,
-                                classes="d-flex flex-row p-2",
-                        ):
-                            create_select("Side A", 'first_folder', )
-
-                            create_select("Side B", 'second_folder', )
-
-        with vuetify.VCol(cols="9", classes="fill-height position-relative"):
-            # Use PyVista UI template for Plotters
-            view = plotter_ui(side_by_side_plot)
-            ctrl.view_update = view.update
-            ctrl.view_reset_camera = view.reset_camera
-
-
-def create_plot_layout():
-    with vuetify.VContainer(
-            fluid=True,
-            classes="pa-2 fill-height d-flex align-center",
-    ):
-        with vuetify.VCol(cols="3"):
-            with vuetify.VCard():
-                vuetify.VCardTitle("Parameters")
-                vuetify.VDivider()
-                with vuetify.VCardText():
-                    with vuetify.VContainer(
-                            fluid=True,
-                            classes="d-flex flex-column",
-                    ):
-                        html.H3("i:")
-                        with vuetify.VSlider(v_model=("index_i",0),min="0",max=str(nx-1),hide_details=True,step=1):
-                            with vuetify.Template(raw_attrs=["v-slot:append"]):
-                                vuetify.VTextField(type="number",v_model=("index_i"), style="width: 70px" ,min="0",max="20",)
-
-                        html.H3("j:")
-                        with vuetify.VSlider(v_model=("index_j",0),min="0",max=str(ny-1),hide_details=True,step=1):
-                            with vuetify.Template(raw_attrs=["v-slot:append"]):
-                                vuetify.VTextField(type="number",v_model=("index_j"), style="width: 70px" )
-
-                        create_select("Side A", 'first_folder', )
-        with vuetify.VCol(cols="9", classes="fill-height position-relative"):
-            vuetify.VBtn()
-
-
-def create_about_layout():
-    print("About goes here")
-
-
-with RouterViewLayout(server, "/",):
-    #TODO REPLACE once fix has been found
-    create_plot_layout()
-    #create_side_by_side_layout()
-
-with RouterViewLayout(server, "/plot", ):
-    create_side_by_side_layout()
-
-with RouterViewLayout(server, "/about",):
-    vuetify.VCheckbox()
-
+# Main page content
 with SinglePageWithDrawerLayout(server) as layout:
-    layout.title.set_text("Full Waveform Inversion Results Visualizer")
-    with layout.content:
-        router.RouterView( classes="w-100 h-100")
-    with layout.drawer:
-        with vuetify.VContainer(fluid=True,
-                classes="d-flex flex-column p-2",
-        ):
-            vuetify.VBtn("Side by Side Comparison", text=True, to="/")
-            vuetify.VBtn("Plot", text=True, to="/plot")
-            vuetify.VBtn("About", text=True, to="/about")
+    layout.title.set_text("Multi-Page demo")
 
-server.start()
+    with layout.content:
+        with vuetify.VContainer():
+            router.RouterView()
+
+    # add router buttons to the drawer
+    with layout.drawer:
+        with vuetify.VList(
+            shaped=True,
+            v_model=("selectedRoute", 0),
+            v_model_opened=("open", []),
+            __properties=[("v_model_opened", "v-model:opened")],
+        ) as c:
+            vuetify.VListSubheader("Routes")
+
+            vuetify.VListItem(to="/", prepend_icon="mdi-home", title="Home")
+            vuetify.VListItem(to="/foo", prepend_icon="mdi-food", title="Foo")
+
+            vuetify.VListSubheader("Bars")
+            vuetify.VListItem(
+                v_for="id in 3",
+                key="id",
+                to=("`/bar/${id}`",),
+                prepend_icon="mdi-peanut-outline",
+                title=("`Bar: Id ${id}`",),
+            )
+
+if __name__ == "__main__":
+    server.start()
