@@ -181,12 +181,11 @@ def create_side_by_side_layout():
 
                             create_select("Side B", 'second_folder',)
 
-        with vuetify.VCol(cols="9", classes="fill-height"):
-            with vuetify.VContainer(fluid=True, classes="fill-height"):
-                # Use PyVista UI template for Plotters
-                view = plotter_ui(p)
-                ctrl.view_update = view.update
-                ctrl.view_reset_camera = view.reset_camera
+        with vuetify.VCol(cols="9", classes="fill-height position-relative"):
+            # Use PyVista UI template for Plotters
+            view = plotter_ui(p)
+            ctrl.view_update = view.update
+            ctrl.view_reset_camera = view.reset_camera
 
 
 def create_plot_layout():
